@@ -25,6 +25,8 @@
   form { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
   label { display: grid; gap: 4px; font-size: .85rem; font-weight: 600; color: var(--muted); }
   .full { grid-column: 1 / -1; }
+  .hint { margin: -6px 0 0; font-size: .8rem; color: var(--muted); min-height: 1em; }
+  select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; }
   input, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; }
   input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   textarea { min-height: 70px; resize: vertical; }
@@ -71,6 +73,9 @@
       <label>Author<input name="author" autocomplete="off"></label>
       <label>Current location<input name="location" placeholder="e.g. Building A shelf" autocomplete="off"></label>
       <label>Copies<input name="count" type="number" min="1" value="1"></label>
+      <label>Category<select name="category" id="cat1"><option value="">Let Claude decide</option></select></label>
+      <label>Secondary category<select name="secondary" id="cat2"><option value="">Let Claude decide</option></select></label>
+      <p class="hint full" id="cathint"></p>
       <label class="full">Notes (optional)<textarea name="notes" placeholder="Edition, condition, which volume, anything unusual"></textarea></label>
       <button id="go">Score book</button>
     </form>
@@ -88,6 +93,26 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const mark = (v) => v === "Y" ? '<span class="Y">Yes</span>' : v === "~" ? '<span class="tilde">Partly</span>' : '<span class="no">No</span>';
 const history = [];
+let categories = [];
+
+fetch("/api/categories").then((r) => r.json()).then((list) => {
+  categories = list;
+  for (const sel of [$("#cat1"), $("#cat2")]) {
+    for (const c of list) {
+      const o = document.createElement("option");
+      o.value = c.name; o.textContent = c.name; o.title = c.description;
+      sel.appendChild(o);
+    }
+  }
+}).catch(() => {});
+
+function showHint() {
+  const pick = (id) => categories.find((c) => c.name === $(id).value);
+  const parts = [pick("#cat1"), pick("#cat2")].filter(Boolean).map((c) => `${c.name}: ${c.description}`);
+  $("#cathint").textContent = parts.join(" · ");
+}
+$("#cat1").addEventListener("change", showHint);
+$("#cat2").addEventListener("change", showHint);
 
 function render(data) {
   const b = data.book;
@@ -146,6 +171,7 @@ $("#f").addEventListener("submit", async (e) => {
     render(data);
     st.hidden = true;
     form.reset();
+    showHint();
     form.title.focus();
   } catch (err) {
     st.className = "status err";

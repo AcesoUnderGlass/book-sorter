@@ -1,5 +1,5 @@
 import { judgeBook } from "../lib/claude.js";
-import { score, include, toRow, SHEET_HEADERS } from "../lib/rubric.js";
+import { score, include, toRow, SHEET_HEADERS, CATEGORY_NAMES } from "../lib/rubric.js";
 import { ensureTab, appendRow, inventory, sheetUrl } from "../lib/sheets.js";
 
 const INVENTORY_TAB = () => process.env.INVENTORY_TAB || "Books- Before";
@@ -19,6 +19,8 @@ export default async function handler(req, res) {
     location: clean(body.location, 100),
     count: clean(body.count, 10) || "1",
     notes: clean(body.notes, 1000),
+    category: CATEGORY_NAMES.includes(body.category) ? body.category : "",
+    secondary: CATEGORY_NAMES.includes(body.secondary) ? body.secondary : "",
   };
   if (!submission.title) return res.status(400).json({ error: "Title is required." });
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: "ANTHROPIC_API_KEY is not set." });
@@ -26,6 +28,9 @@ export default async function handler(req, res) {
   try {
     const inv = await inventory(INVENTORY_TAB(), SUBMISSIONS_TAB());
     const b = await judgeBook(submission, inv);
+    // The volunteer's choice always wins over Claude's.
+    if (submission.category) b.category = submission.category;
+    if (submission.secondary) b.secondary_category = submission.secondary;
     b.score = score(b);
     Object.assign(b, include(b));
 
