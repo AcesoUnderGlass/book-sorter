@@ -85,3 +85,19 @@ test("categories endpoint lists the new categories", async () => {
     assert.ok(out.some((c) => c.name === n), n);
   assert.ok(!out.some((c) => c.name === "History"));
 });
+
+test("parallel first submissions don't fail when both try to create the tab", async () => {
+  const { ensureTab } = await import("../lib/sheets.js");
+  let appended = 0;
+  globalThis.fetch = async (url, init = {}) => {
+    url = String(url);
+    const json = (d, status = 200) => ({ ok: status < 400, status, json: async () => d });
+    if (url.includes("oauth2")) return json({ access_token: "tok", expires_in: 3600 });
+    if (url.includes("fields=sheets")) return json({ sheets: [] });
+    if (url.includes(":batchUpdate")) return json({ error: { message: 'A sheet with the name "Submissions" already exists.' } }, 400);
+    if (url.includes(":append")) { appended++; return json({}); }
+    throw new Error("unexpected " + url);
+  };
+  await ensureTab("Submissions", ["h"]);
+  assert.equal(appended, 0); // the other request writes the header
+});

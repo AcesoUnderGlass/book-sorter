@@ -35,7 +35,7 @@
   @media (max-width: 560px) { form { grid-template-columns: 1fr; } }
   .status { margin: 18px 0 0; color: var(--muted); font-size: .95rem; }
   .err { color: var(--bad); }
-  .result { margin-top: 20px; }
+  .result { margin-top: 0; }
   .head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
   .title { font-family: Fraunces, Georgia, serif; font-size: 1.4rem; margin: 0; }
   .by { color: var(--muted); margin: 2px 0 8px; }
@@ -57,6 +57,19 @@
   .saved { margin-top: 12px; font-size: .9rem; }
   a { color: var(--accent); }
   h2 { font-family: Fraunces, serif; font-size: 1.1rem; margin: 32px 0 8px; }
+  .jobs { display: grid; gap: 10px; margin-top: 20px; }
+  .job { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .job > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+  .job > summary::-webkit-details-marker { display: none; }
+  .job .jt { font-weight: 600; }
+  .job .jt small { font-weight: 400; color: var(--muted); }
+  .job .js { white-space: nowrap; font-size: .9rem; }
+  .job .body { padding: 0 16px 16px; }
+  .job.pending > summary { cursor: default; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: sp 0.9s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .retry { font: 600 .85rem Inter, sans-serif; background: none; color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 4px 10px; cursor: pointer; margin-left: 8px; }
+  .counts { color: var(--muted); font-size: .9rem; margin: 24px 0 0; }
   .hist { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
   .hist li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font-size: .92rem; }
   .hist .s { font-weight: 600; white-space: nowrap; }
@@ -79,20 +92,17 @@
       <label class="full">Notes (optional)<textarea name="notes" placeholder="Edition, condition, which volume, anything unusual"></textarea></label>
       <button id="go">Score book</button>
     </form>
-    <p class="status" id="status" hidden></p>
+    <p class="status" id="status">Each book runs on its own and takes 20–60 seconds. You can enter the next one right away; results appear below as they finish.</p>
   </div>
 
-  <div id="out"></div>
-
-  <h2 id="histh" hidden>This session</h2>
-  <ul class="hist" id="hist"></ul>
+  <p class="counts" id="counts" hidden></p>
+  <div class="jobs" id="jobs"></div>
 </main>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const mark = (v) => v === "Y" ? '<span class="Y">Yes</span>' : v === "~" ? '<span class="tilde">Partly</span>' : '<span class="no">No</span>';
-const history = [];
 let categories = [];
 
 fetch("/api/categories").then((r) => r.json()).then((list) => {
@@ -114,7 +124,7 @@ function showHint() {
 $("#cat1").addEventListener("change", showHint);
 $("#cat2").addEventListener("change", showHint);
 
-function render(data) {
+function resultHTML(data) {
   const b = data.book;
   const crit = [
     ["Historically significant", b.historically_significant],
@@ -123,15 +133,14 @@ function render(data) {
     ["Beloved by a small audience", b.beloved_small_audience],
     ["Rationalist / Lighthaven fit", b.rationalist_fit],
   ];
-  const incLabel = { Y: "Include", "?": "Judgment call", N: "Don't include" }[b.include];
-  $("#out").innerHTML = `
-  <div class="card result">
+  const incLabel = { Y: "Include", N: "Don't include" }[b.include] || b.include;
+  return `
+  <div class="result">
     <div class="head">
       <div>
-        <h3 class="title">${esc(b.title)}</h3>
         <p class="by">${esc(b.author)}${b.year ? " · " + esc(b.year) : ""}</p>
         <div class="chips">
-          <span class="chip inc-${esc(b.include)}">${incLabel}${b.why ? " (" + esc(b.why) + ")" : ""}</span>
+          <span class="chip inc-${esc(b.include)}">${esc(incLabel)}${b.why ? " (" + esc(b.why) + ")" : ""}</span>
           <span class="chip">${esc(b.category)}</span>
           ${b.secondary_category ? `<span class="chip">${esc(b.secondary_category)}</span>` : ""}
           <span class="chip">Confidence: ${esc(b.confidence)}</span>
@@ -151,34 +160,57 @@ function render(data) {
       ? `Saved to the <a href="${esc(data.sheetUrl)}" target="_blank" rel="noopener">${esc(data.tab)} tab</a>.`
       : `<span class="err">Not saved to the sheet: ${esc(data.saveError)}</span>`}</p>
   </div>`;
-  history.unshift(b);
-  $("#histh").hidden = false;
-  $("#hist").innerHTML = history.map((h) => `<li><span>${esc(h.title)} <span class="no">· ${esc(h.category)}</span></span><span class="s">${h.score} · ${esc(h.include)}</span></li>`).join("");
 }
 
-$("#f").addEventListener("submit", async (e) => {
+let pending = 0, done = 0, failed = 0;
+function updateCounts() {
+  const c = $("#counts");
+  c.hidden = pending + done + failed === 0;
+  c.textContent = [pending && `${pending} running`, done && `${done} done`, failed && `${failed} failed`].filter(Boolean).join(" · ");
+}
+
+// Each submission is its own independent request; nothing waits on anything else.
+async function run(job) {
+  pending++; updateCounts();
+  const el = job.el;
+  el.className = "job pending";
+  el.open = false;
+  el.innerHTML = `<summary><span class="jt">${esc(job.payload.title)}${job.payload.author ? ` <small>${esc(job.payload.author)}</small>` : ""}</span><span class="js"><span class="spin"></span>Researching…</span></summary>`;
+  try {
+    const r = await fetch("/api/submit", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(job.payload) });
+    const data = await r.json().catch(() => ({ error: `Server returned ${r.status}` }));
+    if (!r.ok) throw new Error(data.error || `Server returned ${r.status}`);
+    const b = data.book;
+    done++;
+    el.className = "job";
+    el.innerHTML = `<summary><span class="jt">${esc(b.title)} <small>· ${esc(b.category)}</small></span><span class="js">${b.kill ? '<span class="err">Kill · </span>' : ""}${b.score} · ${b.include === "Y" ? '<span class="Y">Include</span>' : '<span class="no">Don\'t include</span>'}${data.saved ? "" : ' · <span class="err">not saved</span>'}</span></summary><div class="body">${resultHTML(data)}</div>`;
+  } catch (err) {
+    failed++;
+    el.className = "job";
+    el.innerHTML = `<summary><span class="jt">${esc(job.payload.title)}</span><span class="js err">Failed<button class="retry" type="button">Retry</button></span></summary><div class="body"><p class="err">${esc(err.message)}</p></div>`;
+    el.querySelector(".retry").addEventListener("click", (e) => { e.preventDefault(); failed--; run(job); });
+  } finally {
+    pending--; updateCounts();
+  }
+}
+
+$("#f").addEventListener("submit", (e) => {
   e.preventDefault();
   const form = e.target;
   const payload = Object.fromEntries(new FormData(form));
-  const btn = $("#go"), st = $("#status");
-  btn.disabled = true; btn.textContent = "Researching…";
-  st.hidden = false; st.className = "status";
-  st.textContent = "Looking the book up and scoring it. This usually takes 20–60 seconds.";
-  try {
-    const r = await fetch("/api/submit", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-    const data = await r.json().catch(() => ({ error: `Server returned ${r.status}` }));
-    if (!r.ok) throw new Error(data.error || `Server returned ${r.status}`);
-    render(data);
-    st.hidden = true;
-    form.reset();
-    showHint();
-    form.title.focus();
-  } catch (err) {
-    st.className = "status err";
-    st.textContent = "Something went wrong: " + err.message;
-  } finally {
-    btn.disabled = false; btn.textContent = "Score book";
-  }
+  const el = document.createElement("details");
+  $("#jobs").prepend(el);
+  run({ payload, el });
+  // Clear the book fields but keep the shelf location, since books usually come off one shelf at a time.
+  const loc = form.location.value;
+  form.reset();
+  form.location.value = loc;
+  showHint();
+  form.title.focus();
+});
+
+window.addEventListener("beforeunload", (e) => {
+  if (pending > 0) { e.preventDefault(); e.returnValue = ""; }
 });
 </script>
 </body>
