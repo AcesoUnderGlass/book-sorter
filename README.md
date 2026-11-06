@@ -17,7 +17,7 @@ All rules live in `lib/rubric.js`:
 - **Score** (max 3.5): historically significant 1, critically acclaimed 1, popular *or* small-audience 0.5 (the better of the two), rationalist fit 1. A `~` earns half.
 - **Include?**: Friends of Lighthaven always `Y`; otherwise `Y` if the score is at least 1.5 (`INCLUDE_THRESHOLD`), else `N`.
 - **Kill**: `Y` if it's a later volume in a series whose first volume isn't in the inventory.
-- **Categories**: the sheet's Categories tab plus History, History of Industry & WW2, Business Self-Help, Self-Help, and Self-Help: Mind & Philosophy. The volunteer can pick the primary and secondary category in the form; otherwise Claude chooses.
+- **Categories**: the sheet's Categories tab plus History of Industry & WW2, Business Self-Help, Self-Help, and Self-Help: Mind & Philosophy. The volunteer can pick the primary and secondary category in the form; otherwise Claude chooses.
 
 ## Deploy on Vercel
 

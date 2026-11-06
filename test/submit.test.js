@@ -38,7 +38,7 @@ test("handler: researches, scores and appends a row", async () => {
       claudeCalls++;
       const body = JSON.parse(init.body);
       assert.match(body.messages[0].content, /Eye of the World/); // inventory passed through
-      assert.match(body.messages[0].content, /assigned primary category "History"/);
+      assert.match(body.messages[0].content, /assigned primary category "Sociology/History"/);
       assert.ok(body.tools[1].input_schema.properties.category.enum.includes("Self-Help: Mind & Philosophy"));
       if (claudeCalls === 1) return json({ stop_reason: "pause_turn", content: [{ type: "text", text: "searching" }] });
       return json({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "t", name: "record_book", input: {
@@ -58,13 +58,13 @@ test("handler: researches, scores and appends a row", async () => {
   const { default: handler } = await import("../api/submit.js");
   let status, payload;
   const res = { status(s) { status = s; return this; }, json(p) { payload = p; return this; }, setHeader() {} };
-  await handler({ method: "POST", body: { title: "great hunt", author: "jordan", location: "Building A", count: "1", category: "History", secondary: "Not a category" } }, res);
+  await handler({ method: "POST", body: { title: "great hunt", author: "jordan", location: "Building A", count: "1", category: "Sociology/History", secondary: "Not a category" } }, res);
 
   assert.equal(status, 200, JSON.stringify(payload));
   assert.equal(payload.saved, true, payload.saveError);
   assert.equal(payload.book.score, 1);
   assert.equal(payload.book.include, "N");
-  assert.equal(payload.book.category, "History"); // volunteer override wins
+  assert.equal(payload.book.category, "Sociology/History"); // volunteer override wins
   assert.equal(payload.book.secondary_category, ""); // invalid override ignored
   assert.equal(claudeCalls, 2); // pause_turn was resumed
 
@@ -81,6 +81,7 @@ test("categories endpoint lists the new categories", async () => {
   const { default: handler } = await import("../api/categories.js");
   let out;
   handler({}, { setHeader() {}, status() { return this; }, json(p) { out = p; } });
-  for (const n of ["History", "History of Science", "History of Industry & WW2", "Business Self-Help", "Self-Help", "Self-Help: Mind & Philosophy"])
+  for (const n of ["Sociology/History", "History of Science", "History of Industry & WW2", "Business Self-Help", "Self-Help", "Self-Help: Mind & Philosophy"])
     assert.ok(out.some((c) => c.name === n), n);
+  assert.ok(!out.some((c) => c.name === "History"));
 });
