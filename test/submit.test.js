@@ -14,7 +14,10 @@ test("score follows the rubric", () => {
 test("include rules", () => {
   const empty = { historically_significant: "", critically_acclaimed: "", exceptionally_popular: "", beloved_small_audience: "", rationalist_fit: "" };
   assert.equal(include({ ...empty, category: "Fiction", secondary_category: "Friend of Lighthaven" }).include, "Y");
-  assert.equal(include({ ...empty, category: "Fiction", secondary_category: "", rationalist_fit: "~" }).include, "?");
+  // Popular only (0.5): no longer enough
+  assert.equal(include({ ...empty, category: "Fiction", secondary_category: "", exceptionally_popular: "Y" }).include, "N");
+  // 1.5 exactly: included
+  assert.equal(include({ ...empty, category: "Fiction", secondary_category: "", critically_acclaimed: "Y", exceptionally_popular: "Y" }).include, "Y");
   assert.equal(include({ ...empty, category: "Fiction", secondary_category: "" }).include, "N");
 });
 
@@ -58,7 +61,7 @@ test("handler: researches, scores and appends a row", async () => {
   assert.equal(status, 200, JSON.stringify(payload));
   assert.equal(payload.saved, true, payload.saveError);
   assert.equal(payload.book.score, 1);
-  assert.equal(payload.book.include, "Y");
+  assert.equal(payload.book.include, "N");
   assert.equal(claudeCalls, 2); // pause_turn was resumed
 
   const appends = calls.filter((c) => c.url.includes(":append"));

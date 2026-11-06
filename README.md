@@ -15,7 +15,7 @@ All rules live in `lib/rubric.js`:
 
 - **Criteria** (each `Y`, `~` or blank): historically significant (famous author but minor book = `~`), critically acclaimed, exceptionally popular, beloved by a small audience (Goodreads ≥ 4.20 avg on ~100–30k ratings = `Y`; 4.00–4.19 or <100 ratings = `~`), rationalist / Lighthaven fit.
 - **Score** (max 3.5): historically significant 1, critically acclaimed 1, popular *or* small-audience 0.5 (the better of the two), rationalist fit 1. A `~` earns half.
-- **Include?**: Friends of Lighthaven always `Y`; otherwise any `Y` → `Y`, any `~` → `?`, else `N`.
+- **Include?**: Friends of Lighthaven always `Y`; otherwise `Y` if the score is at least 1.5 (`INCLUDE_THRESHOLD`), else `N`.
 - **Kill**: `Y` if it's a later volume in a series whose first volume isn't in the inventory.
 - **Categories**: the list from the sheet's Categories tab.
 
