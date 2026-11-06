@@ -38,7 +38,7 @@ test("handler: researches, scores and appends a row", async () => {
       claudeCalls++;
       const body = JSON.parse(init.body);
       assert.match(body.messages[0].content, /Eye of the World/); // inventory passed through
-      assert.match(body.messages[0].content, /assigned primary category "Sociology/History"/);
+      assert.match(body.messages[0].content, /assigned primary category "Sociology\/History"/);
       assert.ok(body.tools[1].input_schema.properties.category.enum.includes("Self-Help: Mind & Philosophy"));
       if (claudeCalls === 1) return json({ stop_reason: "pause_turn", content: [{ type: "text", text: "searching" }] });
       return json({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "t", name: "record_book", input: {
