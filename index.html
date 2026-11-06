@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lighthaven Book Intake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f1e7; --card: #fffdf8; --ink: #2a2118; --muted: #7a6b5a; --line: #e4d9c6;
+    --accent: #8a3b12; --accent-ink: #fff; --good: #2f6b3a; --warn: #a15c00; --bad: #9b2c2c;
+    --chip: #efe4d1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b1713; --card: #241f1a; --ink: #f1e8da; --muted: #b3a28c; --line: #3a3128;
+      --accent: #e08a52; --accent-ink: #1b1713; --good: #7cc58a; --warn: #f0b35c; --bad: #f08a8a; --chip: #332a21; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 Inter, system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-family: Fraunces, Georgia, serif; font-weight: 700; font-size: 2rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  form { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+  label { display: grid; gap: 4px; font-size: .85rem; font-weight: 600; color: var(--muted); }
+  .full { grid-column: 1 / -1; }
+  input, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea { min-height: 70px; resize: vertical; }
+  button { grid-column: 1 / -1; font: 600 1rem Inter, sans-serif; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 12px; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: progress; }
+  @media (max-width: 560px) { form { grid-template-columns: 1fr; } }
+  .status { margin: 18px 0 0; color: var(--muted); font-size: .95rem; }
+  .err { color: var(--bad); }
+  .result { margin-top: 20px; }
+  .head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+  .title { font-family: Fraunces, Georgia, serif; font-size: 1.4rem; margin: 0; }
+  .by { color: var(--muted); margin: 2px 0 8px; }
+  .score { text-align: center; min-width: 84px; }
+  .score b { display: block; font-family: Fraunces, serif; font-size: 2.2rem; line-height: 1; }
+  .score span { font-size: .75rem; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: .8rem; }
+  .chip.inc-Y { background: var(--good); color: var(--card); }
+  .chip.inc-\? { background: var(--warn); color: var(--card); }
+  .chip.inc-N { background: var(--muted); color: var(--card); }
+  .kill { margin-top: 12px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--bad); color: var(--bad); font-size: .9rem; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 8px; font-size: .92rem; }
+  td { padding: 6px 4px; border-top: 1px solid var(--line); }
+  td.v { text-align: right; font-weight: 600; width: 70px; }
+  .Y { color: var(--good); } .tilde { color: var(--warn); } .no { color: var(--muted); font-weight: 400; }
+  .meta { font-size: .9rem; color: var(--muted); display: grid; gap: 4px; }
+  .meta p { margin: 0; }
+  .saved { margin-top: 12px; font-size: .9rem; }
+  a { color: var(--accent); }
+  h2 { font-family: Fraunces, serif; font-size: 1.1rem; margin: 32px 0 8px; }
+  .hist { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .hist li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font-size: .92rem; }
+  .hist .s { font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Lighthaven Book Intake</h1>
+  <p class="sub">Enter a book. It gets researched, categorized and scored, and the result is added to the <span id="tabname">Submissions</span> tab of the library sheet.</p>
+
+  <div class="card">
+    <form id="f">
+      <label class="full">Title *<input name="title" required autocomplete="off"></label>
+      <label>Author<input name="author" autocomplete="off"></label>
+      <label>Current location<input name="location" placeholder="e.g. Building A shelf" autocomplete="off"></label>
+      <label>Copies<input name="count" type="number" min="1" value="1"></label>
+      <label class="full">Notes (optional)<textarea name="notes" placeholder="Edition, condition, which volume, anything unusual"></textarea></label>
+      <button id="go">Score book</button>
+    </form>
+    <p class="status" id="status" hidden></p>
+  </div>
+
+  <div id="out"></div>
+
+  <h2 id="histh" hidden>This session</h2>
+  <ul class="hist" id="hist"></ul>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const mark = (v) => v === "Y" ? '<span class="Y">Yes</span>' : v === "~" ? '<span class="tilde">Partly</span>' : '<span class="no">No</span>';
+const history = [];
+
+function render(data) {
+  const b = data.book;
+  const crit = [
+    ["Historically significant", b.historically_significant],
+    ["Critically acclaimed", b.critically_acclaimed],
+    ["Exceptionally popular", b.exceptionally_popular],
+    ["Beloved by a small audience", b.beloved_small_audience],
+    ["Rationalist / Lighthaven fit", b.rationalist_fit],
+  ];
+  const incLabel = { Y: "Include", "?": "Judgment call", N: "Don't include" }[b.include];
+  $("#out").innerHTML = `
+  <div class="card result">
+    <div class="head">
+      <div>
+        <h3 class="title">${esc(b.title)}</h3>
+        <p class="by">${esc(b.author)}${b.year ? " · " + esc(b.year) : ""}</p>
+        <div class="chips">
+          <span class="chip inc-${esc(b.include)}">${incLabel}${b.why ? " (" + esc(b.why) + ")" : ""}</span>
+          <span class="chip">${esc(b.category)}</span>
+          ${b.secondary_category ? `<span class="chip">${esc(b.secondary_category)}</span>` : ""}
+          <span class="chip">Confidence: ${esc(b.confidence)}</span>
+        </div>
+      </div>
+      <div class="score"><b>${b.score}</b><span>of 3.5</span></div>
+    </div>
+    ${b.kill ? `<div class="kill"><strong>${b.kill === "Y" ? "Kill" : "Possible kill"}:</strong> ${esc(b.kill_reason)}</div>` : ""}
+    <table>${crit.map(([k, v]) => `<tr><td>${k}</td><td class="v">${mark(v)}</td></tr>`).join("")}</table>
+    <div class="meta">
+      <p><strong>Goodreads:</strong> ${esc(b.goodreads)}</p>
+      ${b.already_in_inventory ? `<p><strong>Already in library:</strong> ${esc(b.already_in_inventory)}</p>` : ""}
+      ${b.notes ? `<p><strong>Notes:</strong> ${esc(b.notes)}</p>` : ""}
+      <p>${esc(b.reasoning)}</p>
+    </div>
+    <p class="saved">${data.saved
+      ? `Saved to the <a href="${esc(data.sheetUrl)}" target="_blank" rel="noopener">${esc(data.tab)} tab</a>.`
+      : `<span class="err">Not saved to the sheet: ${esc(data.saveError)}</span>`}</p>
+  </div>`;
+  history.unshift(b);
+  $("#histh").hidden = false;
+  $("#hist").innerHTML = history.map((h) => `<li><span>${esc(h.title)} <span class="no">· ${esc(h.category)}</span></span><span class="s">${h.score} · ${esc(h.include)}</span></li>`).join("");
+}
+
+$("#f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const payload = Object.fromEntries(new FormData(form));
+  const btn = $("#go"), st = $("#status");
+  btn.disabled = true; btn.textContent = "Researching…";
+  st.hidden = false; st.className = "status";
+  st.textContent = "Looking the book up and scoring it. This usually takes 20–60 seconds.";
+  try {
+    const r = await fetch("/api/submit", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+    const data = await r.json().catch(() => ({ error: `Server returned ${r.status}` }));
+    if (!r.ok) throw new Error(data.error || `Server returned ${r.status}`);
+    render(data);
+    st.hidden = true;
+    form.reset();
+    form.title.focus();
+  } catch (err) {
+    st.className = "status err";
+    st.textContent = "Something went wrong: " + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Score book";
+  }
+});
+</script>
+</body>
+</html>

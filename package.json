@@ -1,0 +1,11 @@
+{
+  "name": "lighthaven-books",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Submit books for scoring and categorization; results go to the Lighthaven Books Google Sheet.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
